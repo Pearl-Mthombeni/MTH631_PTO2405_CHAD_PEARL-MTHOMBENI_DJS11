@@ -1,114 +1,79 @@
 import React, { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { useAudio } from "../context/AudioContext";
 
-const ShowDetailPage = () => {
-  const { showId, seasonIndex } = useParams();
-  const { playAudio } = useAudio();
+const LoadingSpinner = () => (
+  <div className="spinner-container">
+    <div className="spinner"></div>
+  </div>
+);
+
+const ShowDetail = () => {
   const [show, setShow] = useState(null);
-  const [selectedSeason, setSelectedSeason] = useState(null);
-  const [favorites, setFavorites] = useState([]);
+  const { showId } = useParams();
 
   useEffect(() => {
     fetch(`https://podcast-api.netlify.app/id/${showId}`)
       .then((response) => response.json())
       .then((data) => {
-        setShow(data);
-        if (seasonIndex && data.seasons[seasonIndex]) {
-          setSelectedSeason(data.seasons[seasonIndex]);
+        if (data && data.seasons) {
+          setShow(data);
+        } else {
+          console.error("Invalid show data:", data);
         }
-
-        const storedFavorites = JSON.parse(localStorage.getItem("favorites")) || [];
-        setFavorites(storedFavorites);
       })
       .catch((error) => {
         console.error("Error fetching show data:", error);
       });
-  }, [showId, seasonIndex]);
+  }, [showId]);
 
-  const handleSeasonClick = (index) => {
-    setSelectedSeason(show.seasons[index]);
-  };
-
-  const handleAddToFavorites = (episode) => {
-    const newFavorite = {
-      showTitle: show.title,
-      episodeTitle: episode.title,  
-      episodeAudio: episode.file,    
-      addedDate: new Date().toISOString(),
-    };
-
-    const updatedFavorites = [...favorites];
-    
-    
-    if (favorites.some((fav) => fav.showTitle === newFavorite.showTitle && fav.episodeTitle === newFavorite.episodeTitle)) {
-      
-      const filteredFavorites = updatedFavorites.filter(
-        (fav) => !(fav.showTitle === newFavorite.showTitle && fav.episodeTitle === newFavorite.episodeTitle)
-      );
-      setFavorites(filteredFavorites);
-      localStorage.setItem("favorites", JSON.stringify(filteredFavorites));
-    } else {
-      
-      updatedFavorites.push(newFavorite);
-      setFavorites(updatedFavorites);
-      localStorage.setItem("favorites", JSON.stringify(updatedFavorites));
-    }
-  };
-
-  if (!show) return <div>Loading...</div>;
+  if (!show) return <LoadingSpinner />; 
 
   return (
-    <div className="show-detail-page">
+    <div className="show-detail">
       <Link to="/showlist">
-        <button className="return-button">Return</button>
+        <button className="view-all-button return-button">Return</button>
       </Link>
 
-      <h1>{show.title}</h1>
-      <img src={show.image} alt={show.title} className="show-image" />
-
-      {selectedSeason === null ? (
-        <div>
-          <h2>Seasons</h2>
-          <ul className="season-list">
-            {show.seasons.map((season, index) => (
-              <li key={season.id} onClick={() => handleSeasonClick(index)} className="season-item">
-                <h3>{season.title}</h3>
-                <img src={season.image} alt={season.title} className="season-image" />
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : (
-        <div>
-          <h2>Season: {selectedSeason.title}</h2>
-          <h3>Episodes</h3>
-          <ul className="episode-list">
-            {selectedSeason.episodes.map((episode, index) => (
-              <li key={episode.id} className="episode-item">
-                <button
-                  className="episode-button"
-                  onClick={() => playAudio(episode.file, episode)} 
-                >
-                  {episode.title}
-                </button>
-                <button
-                  className="addtofavorites"
-                  onClick={() => handleAddToFavorites(episode)}
-                >
-                  {favorites.some((fav) => fav.showTitle === show.title && fav.episodeTitle === episode.title)
-                    ? "Remove from Favorites"
-                    : "Add to Favorites"}
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <h1 className="main-title">ListenUp.</h1>
+      <p>Your World, Your Sound.</p>
+      <h2>{show.title}</h2>
+      <img src={show.image} alt={show.title} />
+      <p>{show.description}</p>
+      <div className="last-updated-box">
+        <p>Last Updated: {new Date(show.updated).toLocaleDateString()}</p>
+      </div>
+      <p>Seasons: {show.seasons.length}</p> 
+      <h2>Seasons</h2>
+      <div className="show-list">
+        {show.seasons && show.seasons.length > 0 ? (
+          show.seasons.map((season, index) => (
+            <div
+              key={index}
+              className="show-card"
+              style={{ width: "auto", marginBottom: "20px" }}
+            >
+              
+              <Link to={`/show/${showId}/season/${index}`} className="season-link">
+                <div className="season-container">
+                  <img
+                    src={season.image}
+                    alt={`Season ${index + 1}`}
+                    className="season-image"
+                  />
+                  <h3 className="season-title">{season.title}</h3>
+                  <p className="episodes-count">
+                    Episodes: {season.episodes ? season.episodes.length : 0}
+                  </p>
+                </div>
+              </Link>
+            </div>
+          ))
+        ) : (
+          <p>No seasons available.</p> 
+        )}
+      </div>
     </div>
   );
 };
 
-export default ShowDetailPage;
-
-
+export default ShowDetail;
